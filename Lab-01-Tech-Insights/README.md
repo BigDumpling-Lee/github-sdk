@@ -41,15 +41,15 @@ GitHub Pages (在线查看)
 ### 步骤
 
 1. Fork 本仓库
-   - 打开 `https://github.com/GitHub-GCR-Cloud-Solution-Architect/GCR-AI-Tour-2026`
+   - 打开 `https://github.com/ITD-NextDimension/github-sdk`
    - 点击右上角 **Fork** 按钮
    - 保留默认设置，点击 **Create fork**
    - 等待 Fork 完成
 
 2. Clone 到本地
 ```bash
-git clone https://github.com/<你的用户名>/GCR-AI-Tour-2026.git
-cd GCR-AI-Tour-2026
+git clone https://github.com/<你的用户名>/github-sdk.git
+cd github-sdk
 ```
 
 3. 安装 GitHub CLI
@@ -132,11 +132,14 @@ python3 --version  # 确认 3.10+
 - 确认 Actions permissions 已开启（Allow all actions）。
 
 ### 步骤 2: 设置 Copilot Token（关键步骤）
-- 前往 https://github.com/settings/tokens?type=beta 创建 Fine-grained Personal Access Token。
+- 前往 https://github.com/settings/tokens?type=beta 创建 **Fine-grained Personal Access Token**
+  （必须是 fine-grained PAT，gh-aw 不支持 GitHub App / OAuth token）。
   - Token name: `copilot-token`
   - Expiration: 30 days
   - Repository access: All repositories
-  - Permissions: 勾选 Copilot 相关的访问权限（或使用 Classic Token 并勾选 `copilot` 范围）。
+  - **Permissions → Account permissions**：将 **Copilot Requests** 设为 **Read** access。
+    > ⚠️ 这是关键权限，且位于 **Account permissions** 下 —— 不要错加成 Repository permissions 里的
+    > 「Copilot agent settings」。权限加错位置会导致 `Authentication failed ... (HTTP 401)`。
 - 回到你的 Fork 仓库 → **Settings** → **Secrets and variables** → **Actions**。
 - 点击 **New repository secret**。
   - Name: `COPILOT_GITHUB_TOKEN`
@@ -147,7 +150,7 @@ python3 --version  # 确认 3.10+
 
 ### 步骤 3: 编译 gh-aw 工作流
 ```bash
-cd GCR-AI-Tour-2026
+cd github-sdk
 gh aw compile .github/workflows/tech-insight.md
 ```
 - 这会在同目录生成 `tech-insight.lock.yml`，即编译后的 GitHub Actions YAML 文件。
@@ -236,7 +239,7 @@ on:
 ```bash
 gh workflow run "Deploy GitHub Pages"
 ```
-4. 访问 `https://<你的用户名>.github.io/GCR-AI-Tour-2026/` 查看在线版报告。
+4. 访问 `https://<你的用户名>.github.io/github-sdk/` 查看在线版报告。
 
 > 💡 完整发布链路：EV Insight 工作流完成 → safe-outputs 创建 PR → 合并 PR → `frontend/report.md` 变更触发 deploy-pages → GitHub Pages 自动更新。
 
@@ -258,7 +261,7 @@ gh workflow run "Deploy GitHub Pages"
 
 ## 附录 A: 目录结构参考
 ```text
-GCR-AI-Tour-2026/
+github-sdk/
 ├── .github/workflows/
 │   ├── tech-insight.md           # gh-aw 工作流定义
 │   ├── tech-insight.lock.yml     # 编译后的 Actions YAML

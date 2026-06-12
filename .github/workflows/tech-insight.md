@@ -10,6 +10,15 @@ tools:
   edit:
 engine: copilot
 timeout-minutes: 45
+steps:
+  - name: Set up Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: '3.11'
+  - name: Install Python deps for mcp-scripts
+    run: |
+      python3 -m pip install --upgrade pip
+      python3 -m pip install -r Lab-01-Tech-Insights/mcp-scripts/requirements.txt
 network:
   allowed:
     - defaults
@@ -66,7 +75,7 @@ mcp-scripts:
         default: 200000
       max_items_per_source:
         type: number
-        default: 25
+        default: 3
     timeout: 300
     run: |
       cd "$GITHUB_WORKSPACE"
@@ -79,7 +88,7 @@ mcp-scripts:
           signals_dir='$INPUT_SIGNALS_DIR',
           timeout_seconds=int('${INPUT_TIMEOUT_SECONDS:-15}'),
           max_chars=int('${INPUT_MAX_CHARS:-200000}'),
-          max_items_per_source=int('${INPUT_MAX_ITEMS_PER_SOURCE:-25}')
+          max_items_per_source=int('${INPUT_MAX_ITEMS_PER_SOURCE:-3}')
       )
       print(json.dumps(result, ensure_ascii=False, default=str))
       "
@@ -94,7 +103,7 @@ mcp-scripts:
         required: true
       max_items_per_source:
         type: number
-        default: 25
+        default: 3
       time_window_hours:
         type: number
         default: 24
@@ -107,7 +116,7 @@ mcp-scripts:
       result = tech_load_articles_from_disk(
           signals_dir='$INPUT_SIGNALS_DIR',
           source_list_path='$INPUT_SOURCE_LIST_PATH',
-          max_items_per_source=int('${INPUT_MAX_ITEMS_PER_SOURCE:-25}'),
+          max_items_per_source=int('${INPUT_MAX_ITEMS_PER_SOURCE:-3}'),
           time_window_hours=int('${INPUT_TIME_WINDOW_HOURS:-24}')
       )
       print(json.dumps(result, ensure_ascii=False, default=str))
@@ -123,10 +132,10 @@ mcp-scripts:
         required: true
       top_k:
         type: number
-        default: 12
+        default: 6
     run: |
       cd "$GITHUB_WORKSPACE"
-      echo "{\"raw_signals_json\": $(echo $INPUT_RAW_SIGNALS_JSON | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"clusters_json\": $(echo $INPUT_CLUSTERS_JSON | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"top_k\": ${INPUT_TOP_K:-12}}" | python3 Lab-01-Tech-Insights/mcp-scripts/tech_cluster_or_fallback.py
+      python3 -c "import os, json, sys, subprocess; payload = json.dumps({'raw_signals_json': os.environ.get('INPUT_RAW_SIGNALS_JSON', ''), 'clusters_json': os.environ.get('INPUT_CLUSTERS_JSON', ''), 'top_k': int(os.environ.get('INPUT_TOP_K') or 6)}); sys.exit(subprocess.run([sys.executable, 'Lab-01-Tech-Insights/mcp-scripts/tech_cluster_or_fallback.py'], input=payload, text=True).returncode)"
   tech-insight-or-fallback:
     description: "Validate and fallback insight results"
     inputs:
@@ -138,7 +147,7 @@ mcp-scripts:
         required: true
     run: |
       cd "$GITHUB_WORKSPACE"
-      echo "{\"clusters_json\": $(echo $INPUT_CLUSTERS_JSON | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"insights_json\": $(echo $INPUT_INSIGHTS_JSON | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))') }" | python3 Lab-01-Tech-Insights/mcp-scripts/tech_insight_or_fallback.py
+      python3 -c "import os, json, sys, subprocess; payload = json.dumps({'clusters_json': os.environ.get('INPUT_CLUSTERS_JSON', ''), 'insights_json': os.environ.get('INPUT_INSIGHTS_JSON', '')}); sys.exit(subprocess.run([sys.executable, 'Lab-01-Tech-Insights/mcp-scripts/tech_insight_or_fallback.py'], input=payload, text=True).returncode)"
   tech-render-report-or-fallback:
     description: "Validate and fallback report rendering"
     inputs:
@@ -153,7 +162,7 @@ mcp-scripts:
         required: true
     run: |
       cd "$GITHUB_WORKSPACE"
-      echo "{\"clusters_json\": $(echo $INPUT_CLUSTERS_JSON | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"insights_json\": $(echo $INPUT_INSIGHTS_JSON | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"draft_markdown\": $(echo $INPUT_DRAFT_MARKDOWN | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')}" | python3 Lab-01-Tech-Insights/mcp-scripts/tech_render_report_or_fallback.py
+      python3 -c "import os, json, sys, subprocess; payload = json.dumps({'clusters_json': os.environ.get('INPUT_CLUSTERS_JSON', ''), 'insights_json': os.environ.get('INPUT_INSIGHTS_JSON', ''), 'draft_markdown': os.environ.get('INPUT_DRAFT_MARKDOWN', '')}); sys.exit(subprocess.run([sys.executable, 'Lab-01-Tech-Insights/mcp-scripts/tech_render_report_or_fallback.py'], input=payload, text=True).returncode)"
   write-text-file:
     description: "Write text content to a file"
     inputs:
@@ -168,7 +177,7 @@ mcp-scripts:
         default: true
     run: |
       cd "$GITHUB_WORKSPACE"
-      echo "{\"path\": \"$INPUT_PATH\", \"text\": $(echo $INPUT_TEXT | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))'), \"overwrite\": ${INPUT_OVERWRITE:-true}}" | python3 Lab-01-Tech-Insights/mcp-scripts/write_text_file.py
+      python3 -c "import os, json, sys, subprocess; payload = json.dumps({'path': os.environ.get('INPUT_PATH', ''), 'text': os.environ.get('INPUT_TEXT', ''), 'overwrite': os.environ.get('INPUT_OVERWRITE', 'true').strip().lower() not in ('false', '0', 'no')}); sys.exit(subprocess.run([sys.executable, 'Lab-01-Tech-Insights/mcp-scripts/write_text_file.py'], input=payload, text=True).returncode)"
 ---
 
 # Tech Insight 工作流
@@ -181,8 +190,8 @@ mcp-scripts:
 - `signals_dir`: `Lab-01-Tech-Insights/output/signals`
 - `output_dir`: `Lab-01-Tech-Insights/output`
 - `time_window_hours`: `24`
-- `top_k`: `12`
-- `max_items_per_source`: `25`
+- `top_k`: `6`
+- `max_items_per_source`: `3`
 - `timeout_seconds`: `15`
 - `max_chars`: `200000`
 
@@ -197,8 +206,8 @@ mcp-scripts:
 ## 阶段 1：抓取并装载原始信号
 
 1. 先调用 `tech.read_source_list(source_list_path)` 读取并确认源列表可用。
-2. 调用 `tech.fetch_all_to_disk(source_list_path, signals_dir, timeout_seconds=15, max_chars=200000, max_items_per_source=25)` 抓取所有信号并落盘到 `signals_dir`。
-3. 调用 `tech.load_articles_from_disk(signals_dir, source_list_path, max_items_per_source=25, time_window_hours=24)` 生成原始信号 JSON。
+2. 调用 `tech.fetch_all_to_disk(source_list_path, signals_dir, timeout_seconds=15, max_chars=200000, max_items_per_source=3)` 抓取所有信号并落盘到 `signals_dir`。
+3. 调用 `tech.load_articles_from_disk(signals_dir, source_list_path, max_items_per_source=3, time_window_hours=24)` 生成原始信号 JSON。
 4. 用 `edit` 工具将原始信号 JSON 写入 `Lab-01-Tech-Insights/output/raw_signals.json`。
 5. 简要汇报源列表路径、抓取目录、纳入时间窗与原始信号保存位置。
 6. 如果工具提示使用了兜底逻辑，在输出中注明。
@@ -230,7 +239,7 @@ mcp-scripts:
 {"hotspots": [{"hotspot_id": "H01", "title": "...", "summary": "...", "category": "trend|single", "overall_heat_score": 0, "coverage": {"source_count": 0, "companies": [], "platforms": []}, "should_chase": "yes|no", "chase_rationale": [], "samples": [{"platform": "...", "title": "...", "url": "...", "published_at": "...", "company": "...", "signal_level": "..."}]}]}
 ```
 
-2. 将模型生成的聚类候选结果交给 `tech.cluster_or_fallback(raw_signals_json, clusters_json, top_k=12)` 做校验与兜底，得到最终热点聚类 JSON。
+2. 将模型生成的聚类候选结果交给 `tech.cluster_or_fallback(raw_signals_json, clusters_json, top_k=6)` 做校验与兜底，得到最终热点聚类 JSON。
 3. 用 `edit` 工具将最终热点聚类 JSON 写入 `Lab-01-Tech-Insights/output/clusters/hotspots.json`。
 4. 在输出中区分 `cross_source_trends` 与 `high_signal_singles` 的主要发现。
 5. 如果工具提示使用了兜底逻辑，在输出中注明。
